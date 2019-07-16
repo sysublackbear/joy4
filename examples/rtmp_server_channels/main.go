@@ -90,17 +90,19 @@ func main() {
 			cursor := ch.que.Latest()
 			query := conn.URL.Query()
 
+			// 获取delaygop参数
 			if q := query.Get("delaygop"); q != "" {
 				n := 0
 				fmt.Sscanf(q, "%d", &n)
 				cursor = ch.que.DelayedGopCount(n)
-			} else if q := query.Get("delaytime"); q != "" {
+			} else if q := query.Get("delaytime"); q != "" {  // 获取delaytime参数
 				dur, _ := time.ParseDuration(q)
 				cursor = ch.que.DelayedTime(dur)
 			}
 
 			filters := pktque.Filters{}
 
+			// 是否等待关键帧
 			if q := query.Get("waitkey"); q != "" {
 				filters = append(filters, &pktque.WaitKeyFrame{})
 			}
@@ -132,7 +134,11 @@ func main() {
 			avutil.CopyFile(conn, demuxer)
 		}
 	}
+	// 根据上面delaygop, delaytime, waitkey, framedrop, delayskip参数进行来修改filter，cursor
+	// 然后再demuxer的基础上包装pktque.FilterDemuxer,FilterDemux对ReadPacket进行重写，每次调用ReadPacket之前先调用一次
+	// ModifyPacket
 
+	// 推流的逻辑依旧没有变化
 	server.HandlePublish = func(conn *rtmp.Conn) {
 		l.Lock()
 		ch := channels[conn.URL.Path]

@@ -53,6 +53,9 @@ func DialTimeout(uri string, timeout time.Duration) (conn *Conn, err error) {
 	return
 }
 
+
+// rtmp服务器对外暴露三个方法：HandlePublish, HandlePlay, HandleConn
+// 由业务方去实现
 type Server struct {
 	Addr          string
 	HandlePublish func(*Conn)
@@ -60,6 +63,8 @@ type Server struct {
 	HandleConn    func(*Conn)
 }
 
+
+// 处理连接的主逻辑
 func (self *Server) handleConn(conn *Conn) (err error) {
 	if self.HandleConn != nil {
 		self.HandleConn(conn)
@@ -69,7 +74,9 @@ func (self *Server) handleConn(conn *Conn) (err error) {
 		}
 
 		if conn.playing {
+			// conn播放(play)就绪
 			if self.HandlePlay != nil {
+				// 播放主逻辑,由业务方去实现
 				self.HandlePlay(conn)
 			}
 		} else if conn.publishing {
@@ -115,6 +122,7 @@ func (self *Server) ListenAndServe() (err error) {
 		conn := NewConn(netconn)
 		conn.isserver = true
 		go func() {
+			// 处理每个请求过来的连接
 			err := self.handleConn(conn)
 			if Debug {
 				fmt.Println("rtmp: server: client closed err:", err)
@@ -1051,6 +1059,9 @@ const chunkHeaderLength = 12
 const FlvTimestampMax = 0xFFFFFF
 
 func (self *Conn) fillChunkHeader(b []byte, csid uint32, timestamp int32, msgtypeid uint8, msgsid uint32, msgdatalen int) (n int) {
+	// 详见: https://www.jianshu.com/p/3c5b3a48ec88
+	// RTMP Chunk Header
+
 	//  0                   1                   2                   3
 	//  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 	// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1096,6 +1107,7 @@ func (self *Conn) flushWrite() (err error) {
 	return
 }
 
+// 从self.bufr读取到chunkStream
 func (self *Conn) readChunk() (err error) {
 	b := self.readbuf
 	n := 0
@@ -1300,11 +1312,13 @@ func (self *Conn) readChunk() (err error) {
 			fmt.Print(hex.Dump(cs.msgdata))
 		}
 
+		// 收包处理(ChunkStream内部处理)
 		if err = self.handleMsg(cs.timenow, cs.msgsid, cs.msgtypeid, cs.msgdata); err != nil {
 			return
 		}
 	}
 
+	// 回包回复ACK
 	self.ackn += uint32(n)
 	if self.readAckSize != 0 && self.ackn > self.readAckSize {
 		if err = self.writeAck(self.ackn); err != nil {

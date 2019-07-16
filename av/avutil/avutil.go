@@ -23,7 +23,7 @@ func (self *HandlerDemuxer) Close() error {
 type HandlerMuxer struct {
 	av.Muxer
 	w io.WriteCloser
-	stage int
+	stage int //
 }
 
 func (self *HandlerMuxer) WriteHeader(streams []av.CodecData) (err error) {
@@ -83,7 +83,7 @@ func (self *Handlers) openUrl(u *url.URL, uri string) (r io.ReadCloser, err erro
 		for _, handler := range self.handlers {
 			if handler.UrlReader != nil {
 				var ok bool
-				if ok, r, err = handler.UrlReader(uri); ok {
+				if ok, r, err = handler.UrlReader(uri); ok {   // 读取url
 					return
 				}
 			}
@@ -184,6 +184,7 @@ func (self *Handlers) Open(uri string) (demuxer av.DemuxCloser, err error) {
 	}
 
 	for _, handler := range self.handlers {
+		// Probe -- 探测
 		if handler.Probe != nil && handler.Probe(probebuf[:]) && handler.ReaderDemuxer != nil {
 			var _r io.Reader
 			if rs, ok := r.(io.ReadSeeker); ok {
@@ -309,3 +310,5 @@ func CopyFile(dst av.Muxer, src av.Demuxer) (err error) {
 	}
 	return
 }
+
+// finish

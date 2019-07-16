@@ -15,6 +15,7 @@ func init() {
 }
 
 func main() {
+	// 转码：flv格式转ts格式
 	infile, _ := avutil.Open("speex.flv")
 
 	findcodec := func(stream av.AudioCodecData, i int) (need bool, dec av.AudioDecoder, enc av.AudioEncoder, err error) {

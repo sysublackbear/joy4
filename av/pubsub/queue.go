@@ -84,17 +84,18 @@ func (self *Queue) WritePacket(pkt av.Packet) (err error) {
 	self.lock.Lock()
 
 	self.buf.Push(pkt)
+	// 包的下标是视频类型 && 关键帧
 	if pkt.Idx == int8(self.videoidx) && pkt.IsKeyFrame {
 		self.curgopcount++
 	}
 
 	for self.curgopcount >= self.maxgopcount && self.buf.Count > 1 {
-		pkt := self.buf.Pop()
+		pkt := self.buf.Pop()  // 环形队列，丢弃旧的帧
 		if pkt.Idx == int8(self.videoidx) && pkt.IsKeyFrame {
-			self.curgopcount--
+			self.curgopcount--  // 关键帧,curgopcount减一
 		}
 		if self.curgopcount < self.maxgopcount {
-			break
+			break  // 符合条件,退出
 		}
 	}
 	//println("shrink", self.curgopcount, self.maxgopcount, self.buf.Head, self.buf.Tail, "count", self.buf.Count, "size", self.buf.Size)
@@ -122,7 +123,7 @@ func (self *Queue) newCursor() *QueueCursor {
 func (self *Queue) Latest() *QueueCursor {
 	cursor := self.newCursor()
 	cursor.init = func(buf *pktque.Buf, videoidx int) pktque.BufPos {
-		return buf.Tail
+		return buf.Tail  // 返回尾部，最新值
 	}
 	return cursor
 }
@@ -131,7 +132,7 @@ func (self *Queue) Latest() *QueueCursor {
 func (self *Queue) Oldest() *QueueCursor {
 	cursor := self.newCursor()
 	cursor.init = func(buf *pktque.Buf, videoidx int) pktque.BufPos {
-		return buf.Head
+		return buf.Head  // 返回头部
 	}
 	return cursor
 }
@@ -145,7 +146,7 @@ func (self *Queue) DelayedTime(dur time.Duration) *QueueCursor {
 			end := buf.Get(i)
 			for buf.IsValidPos(i) {
 				if end.Time-buf.Get(i).Time > dur {
-					break
+					break  // 时长为大于dur即退出
 				}
 				i--
 			}
@@ -168,7 +169,7 @@ func (self *Queue) DelayedGopCount(n int) *QueueCursor {
 				}
 			}
 		}
-		return i
+		return i  // 最终会变成0?
 	}
 	return cursor
 }
@@ -188,11 +189,12 @@ func (self *QueueCursor) Streams() (streams []av.CodecData, err error) {
 }
 
 // ReadPacket will not consume packets in Queue, it's just a cursor.
+// ReadPacket不消耗队列的元素，仅仅是一个游标，进行移动
 func (self *QueueCursor) ReadPacket() (pkt av.Packet, err error) {
 	self.que.cond.L.Lock()
 	buf := self.que.buf
 	if !self.gotpos {
-		self.pos = self.init(buf, self.que.videoidx)
+		self.pos = self.init(buf, self.que.videoidx)  // 获取起点位置
 		self.gotpos = true
 	}
 	for {
@@ -202,12 +204,12 @@ func (self *QueueCursor) ReadPacket() (pkt av.Packet, err error) {
 			self.pos = buf.Tail
 		}
 		if buf.IsValidPos(self.pos) {
-			pkt = buf.Get(self.pos)
+			pkt = buf.Get(self.pos)  // 读取成功，退出
 			self.pos++
 			break
 		}
 		if self.que.closed {
-			err = io.EOF
+			err = io.EOF  // 读取失败，遇到EOF，退出
 			break
 		}
 		self.que.cond.Wait()
@@ -215,3 +217,5 @@ func (self *QueueCursor) ReadPacket() (pkt av.Packet, err error) {
 	self.que.cond.L.Unlock()
 	return
 }
+
+// finish

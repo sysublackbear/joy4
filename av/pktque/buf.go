@@ -6,7 +6,7 @@ import (
 
 type Buf struct {
 	Head, Tail BufPos
-	pkts       []av.Packet
+	pkts       []av.Packet  // 环形队列
 	Size       int
 	Count      int
 }
@@ -17,6 +17,8 @@ func NewBuf() *Buf {
 	}
 }
 
+
+// 环形队列Pop
 func (self *Buf) Pop() av.Packet {
 	if self.Count == 0 {
 		panic("pktque.Buf: Pop() when count == 0")
@@ -26,7 +28,7 @@ func (self *Buf) Pop() av.Packet {
 	pkt := self.pkts[i]
 	self.pkts[i] = av.Packet{}
 	self.Size -= len(pkt.Data)
-	self.Head++
+	self.Head++  // 环形队列的Head向前推移
 	self.Count--
 
 	return pkt
@@ -40,6 +42,8 @@ func (self *Buf) grow() {
 	self.pkts = newpkts
 }
 
+
+// 环形队列Push（这种位运算思想应用很广泛，值得学习）
 func (self *Buf) Push(pkt av.Packet) {
 	if self.Count == len(self.pkts) {
 		self.grow()
@@ -71,3 +75,5 @@ func (self BufPos) GE(pos BufPos) bool {
 func (self BufPos) GT(pos BufPos) bool {
 	return self-pos > 0
 }
+
+// finish

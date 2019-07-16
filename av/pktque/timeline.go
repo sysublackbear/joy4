@@ -25,15 +25,16 @@ type Timeline struct {
 
 func (self *Timeline) Push(tm time.Duration, dur time.Duration) {
 	if len(self.segs) > 0 {
-		tail := self.segs[len(self.segs)-1]
+		tail := self.segs[len(self.segs)-1]  // 取出最后一位
 		diff := tm-(tail.tm+tail.dur)
 		if diff < 0 {
-			tm -= diff
+			tm -= diff  // 往timeline塞入tm为起始点，持续时长为dur的数据，重复的话，tm推前
 		}
 	}
 	self.segs = append(self.segs, tlSeg{tm, dur})
 }
 
+// 从timeline中pop出时长为dur大小的数据。
 func (self *Timeline) Pop(dur time.Duration) (tm time.Duration) {
 	if len(self.segs) == 0 {
 		return self.headtm
@@ -44,7 +45,7 @@ func (self *Timeline) Pop(dur time.Duration) (tm time.Duration) {
 		seg := &self.segs[0]
 		sub := dur
 		if seg.dur < sub {
-			sub = seg.dur
+			sub = seg.dur  // 需要的差比当前一个seg还大
 		}
 		seg.dur -= sub
 		dur -= sub
@@ -59,3 +60,4 @@ func (self *Timeline) Pop(dur time.Duration) (tm time.Duration) {
 	return
 }
 
+// finish

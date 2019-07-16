@@ -25,7 +25,16 @@ func (self writeFlusher) Flush() error {
 	return nil
 }
 
+// rtmp的Server
 func main() {
+	/*
+	type Server struct {
+		Addr          string
+		HandlePublish func(*Conn)
+		HandlePlay    func(*Conn)
+		HandleConn    func(*Conn)
+	}
+	 */
 	server := &rtmp.Server{}
 
 	l := &sync.RWMutex{}
@@ -34,6 +43,7 @@ func main() {
 	}
 	channels := map[string]*Channel{}
 
+	// 处理播放逻辑
 	server.HandlePlay = func(conn *rtmp.Conn) {
 		l.RLock()
 		ch := channels[conn.URL.Path]
@@ -41,10 +51,13 @@ func main() {
 
 		if ch != nil {
 			cursor := ch.que.Latest()
+			// dst:conn, src:cursor
+			// 将整个queue的内容拷贝到conn中
 			avutil.CopyFile(conn, cursor)
 		}
 	}
 
+	// 处理推流逻辑
 	server.HandlePublish = func(conn *rtmp.Conn) {
 		streams, _ := conn.Streams()
 
@@ -63,6 +76,7 @@ func main() {
 			return
 		}
 
+		// ch.que: dst av.PacketWriter; conn: src av.PacketReader
 		avutil.CopyPackets(ch.que, conn)
 
 		l.Lock()

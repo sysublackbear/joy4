@@ -24,6 +24,7 @@ const (
 	U32 // unsigned 32-bit integer
 )
 
+// 多少个字节
 func (self SampleFormat) BytesPerSample() int {
 	switch self {
 	case U8, U8P:
@@ -104,6 +105,7 @@ const (
 	// TODO: add all channel_layout in ffmpeg
 )
 
+// 计算有多少个1
 func (self ChannelLayout) Count() (n int) {
 	for self != 0 {
 		n++
@@ -116,7 +118,7 @@ func (self ChannelLayout) Count() (n int) {
 type CodecType uint32
 
 var (
-	H264 = MakeVideoCodecType(avCodecTypeMagic + 1)
+	H264 = MakeVideoCodecType(avCodecTypeMagic + 1)  // 233334 << 1 = 466668; 466668 & 0x1 = 0，不是音频信号?
 	AAC       = MakeAudioCodecType(avCodecTypeMagic + 1)
 	PCM_MULAW = MakeAudioCodecType(avCodecTypeMagic + 2)
 	PCM_ALAW  = MakeAudioCodecType(avCodecTypeMagic + 3)
@@ -231,7 +233,7 @@ type Packet struct {
 	IsKeyFrame      bool // video packet is key frame
 	Idx             int8 // stream index in container format
 	CompositionTime time.Duration // packet presentation time minus decode time for H264 B-Frame
-	Time time.Duration // packet decode time
+	Time time.Duration // packet decode time（解码时间）
 	Data            []byte // packet data
 }
 
@@ -244,11 +246,13 @@ type AudioFrame struct {
 	Data          [][]byte // data array for planar format len(Data) > 1
 }
 
+// 数量除以速率等于时间间隔
 func (self AudioFrame) Duration() time.Duration {
 	return time.Second * time.Duration(self.SampleCount) / time.Duration(self.SampleRate)
 }
 
 // Check this audio frame has same format as other audio frame.
+// 检查两个视频帧是否相同
 func (self AudioFrame) HasSameFormat(other AudioFrame) bool {
 	if self.SampleRate != other.SampleRate {
 		return false
@@ -270,7 +274,7 @@ func (self AudioFrame) Slice(start int, end int) (out AudioFrame) {
 	out = self
 	out.Data = append([][]byte(nil), out.Data...)
 	out.SampleCount = end - start
-	size := self.SampleFormat.BytesPerSample()
+	size := self.SampleFormat.BytesPerSample()  // 多少个字节
 	for i := range out.Data {
 		out.Data[i] = out.Data[i][start*size : end*size]
 	}
@@ -278,6 +282,7 @@ func (self AudioFrame) Slice(start int, end int) (out AudioFrame) {
 }
 
 // Concat two audio frames.
+// 将两个视频帧连接在一起
 func (self AudioFrame) Concat(in AudioFrame) (out AudioFrame) {
 	out = self
 	out.Data = append([][]byte(nil), out.Data...)

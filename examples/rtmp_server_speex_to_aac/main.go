@@ -25,6 +25,7 @@ func main() {
 	server.HandlePublish = func(conn *rtmp.Conn) {
 		file, _ := avutil.Create("out.ts")
 
+		// 获取转码器（解码+编码），细节暂时不需要了解，调用ffmpeg框架，获取可用的转码器findcodec
 		findcodec := func(stream av.AudioCodecData, i int) (need bool, dec av.AudioDecoder, enc av.AudioEncoder, err error) {
 			need = true
 			dec, _ = ffmpeg.NewAudioDecoder(stream)

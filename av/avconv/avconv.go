@@ -39,7 +39,8 @@ func (self *Demuxer) Streams() (streams []av.CodecData, err error) {
 	if err = self.prepare(); err != nil {
 		return
 	}
-	streams = self.streams
+	// todo: streams成员由谁去赋值?
+	streams = self.streams  // 直接读取streams成员
 	return
 }
 
@@ -47,11 +48,11 @@ func (self *Demuxer) ReadPacket() (pkt av.Packet, err error) {
 	if err = self.prepare(); err != nil {
 		return
 	}
-	return self.transdemux.ReadPacket()
+	return self.transdemux.ReadPacket()  // 直接调用transcoder的ReadPacket方法
 }
 
 func (self *Demuxer) prepare() (err error) {
-	if self.transdemux != nil {
+	if self.transdemux != nil {  // trancoder已初始化
 		return
 	}
 
@@ -62,7 +63,9 @@ func (self *Demuxer) prepare() (err error) {
 	}
 	*/
 
-	supports := self.Options.OutputCodecTypes
+	// 初始化transcoder
+	// supports: 支持哪些编码格式
+	supports := self.Options.OutputCodecTypes   // []av.CodecType
 
 	transopts := transcode.Options{}
 	transopts.FindAudioDecoderEncoder = func(codec av.AudioCodecData, i int) (ok bool, dec av.AudioDecoder, enc av.AudioEncoder, err error) {
@@ -73,7 +76,7 @@ func (self *Demuxer) prepare() (err error) {
 		support := false
 		for _, typ := range supports {
 			if typ == codec.Type() {
-				support = true
+				support = true  // codec的Type是已经在需要支持的编码格式列表里面，实则返回成功
 			}
 		}
 
@@ -82,9 +85,10 @@ func (self *Demuxer) prepare() (err error) {
 		}
 		ok = true
 
-		var enctype av.CodecType
+		var enctype av.CodecType  // 待转码的类型
 		for _, typ:= range supports {
-			if typ.IsAudio() {
+			if typ.IsAudio() {  // 属于音频信号
+				// 获取编码器
 				if enc, _ = avutil.DefaultHandlers.NewAudioEncoder(typ); enc != nil {
 					enctype = typ
 					break
@@ -99,6 +103,7 @@ func (self *Demuxer) prepare() (err error) {
 		// TODO: support per stream option
 		// enc.SetSampleRate ...
 
+		// 获取解码器
 		if dec, err = avutil.DefaultHandlers.NewAudioDecoder(codec); err != nil {
 			err = fmt.Errorf("avconv: decode %s failed", codec.Type())
 			return
@@ -107,6 +112,7 @@ func (self *Demuxer) prepare() (err error) {
 		return
 	}
 
+	// 初始化transdemux
 	self.transdemux = &transcode.Demuxer{
 		Options: transopts,
 		Demuxer: self.Demuxer,
@@ -118,6 +124,10 @@ func (self *Demuxer) prepare() (err error) {
 	return
 }
 
+
+// -i : 要处理的视频文件路径
+// -v : 仅做打印
+// -t
 func ConvertCmdline(args []string) (err error) {
 	output := ""
 	input := ""
@@ -173,11 +183,13 @@ func ConvertCmdline(args []string) (err error) {
 	var demuxer av.DemuxCloser
 	var muxer av.MuxCloser
 
+	// 获取分离器
 	if demuxer, err = avutil.Open(input); err != nil {
 		return
 	}
 	defer demuxer.Close()
 
+	// 获取合并器
 	var handler avutil.RegisterHandler
 	if handler, muxer, err = avutil.DefaultHandlers.FindCreate(output); err != nil {
 		return
@@ -238,6 +250,7 @@ func ConvertCmdline(args []string) (err error) {
 		if flagv {
 			fmt.Println(pkt.Idx, pkt.Time, len(pkt.Data), pkt.IsKeyFrame)
 		}
+		// 大于时长，则退出
 		if duration != 0 && pkt.Time > duration {
 			break
 		}
@@ -253,3 +266,4 @@ func ConvertCmdline(args []string) (err error) {
 	return
 }
 
+// finish
