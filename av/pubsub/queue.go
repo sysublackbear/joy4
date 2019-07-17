@@ -19,6 +19,8 @@ import (
 // oldest          latest
 //
 
+// GopCount:两个I帧(关键帧)之间的间距，Queue本身是个环形队列，GopCount决定Queue的buf长度
+// 两个关键帧的间距大于maxgopcount，环形队列会丢弃第一个关键帧，体现为客户端丢帧，卡顿。
 // One publisher and multiple subscribers thread-safe packet buffer queue.
 type Queue struct {
 	buf                      *pktque.Buf
